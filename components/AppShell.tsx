@@ -3,16 +3,16 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { BrandMark } from './BrandMark';
-import { DiscoverPanel } from './DiscoverPanel';
-import { HostPanel } from './HostPanel';
-import { LibraryPanel } from './LibraryPanel';
+import { FeedPanel } from './FeedPanel';
+import { RoomsPanel } from './RoomsPanel';
+import { ConnectPanel } from './ConnectPanel';
 import { ProfilePanel } from './ProfilePanel';
 import type { Profile } from '@/lib/types';
 
-type Tab = 'discover' | 'host' | 'library' | 'profile';
+type Tab = 'feed' | 'rooms' | 'connect' | 'profile';
 
 export function AppShell({ userId, initialProfile }: { userId: string; initialProfile: Profile }) {
-  const [tab, setTab] = useState<Tab>('discover');
+  const [tab, setTab] = useState<Tab>('feed');
   const [profile, setProfile] = useState(initialProfile);
 
   async function handleSignOut() {
@@ -25,21 +25,21 @@ export function AppShell({ userId, initialProfile }: { userId: string; initialPr
         <div className="brand">
           <BrandMark />
           <div className="brand-text">
-            <h1>The Table</h1>
-            <p>PULL UP A CHAIR — FIND YOUR NEXT GAME NIGHT</p>
+            <h1>The Huddle</h1>
+            <p>WHERE FANS TALK SPORTS</p>
           </div>
         </div>
         <nav>
-          <button className={tab === 'discover' ? 'active' : ''} onClick={() => setTab('discover')}>Discover</button>
-          <button className={tab === 'host' ? 'active' : ''} onClick={() => setTab('host')}>Host a Table</button>
-          <button className={tab === 'library' ? 'active' : ''} onClick={() => setTab('library')}>My Games</button>
+          <button className={tab === 'feed' ? 'active' : ''} onClick={() => setTab('feed')}>Feed</button>
+          <button className={tab === 'rooms' ? 'active' : ''} onClick={() => setTab('rooms')}>Game Rooms</button>
+          <button className={tab === 'connect' ? 'active' : ''} onClick={() => setTab('connect')}>Connect</button>
           <button className={tab === 'profile' ? 'active' : ''} onClick={() => setTab('profile')}>Profile</button>
         </nav>
       </header>
 
-      {tab === 'discover' && <DiscoverPanel currentUserId={userId} />}
-      {tab === 'host' && <HostPanel currentUserId={userId} onHosted={() => setTab('discover')} />}
-      {tab === 'library' && <LibraryPanel currentUserId={userId} />}
+      {tab === 'feed' && <FeedPanel currentUserId={userId} currentProfile={profile} />}
+      {tab === 'rooms' && <RoomsPanel currentUserId={userId} currentProfile={profile} />}
+      {tab === 'connect' && <ConnectPanel currentUserId={userId} />}
       {tab === 'profile' && (
         <ProfilePanel profile={profile} onSignOut={handleSignOut} onUpdated={setProfile} />
       )}
