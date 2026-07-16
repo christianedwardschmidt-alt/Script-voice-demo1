@@ -41,14 +41,14 @@ export function AuthForm() {
         <div className="brand" style={{ marginBottom: 20 }}>
           <BrandMark />
           <div className="brand-text">
-            <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 24, margin: 0 }}>The Table</h2>
+            <h2 style={{ fontFamily: "'Anton', sans-serif", fontSize: 26, margin: 0, textTransform: 'uppercase' }}>The Huddle</h2>
           </div>
         </div>
         <div className="sub">
-          {mode === 'login' ? 'Sign in to pull up a chair.' : 'Create an account to host or join a table.'}
+          {mode === 'login' ? 'Sign in and get back in the huddle.' : 'Create an account to start talking sports.'}
         </div>
         {error && <div className="auth-error">{error}</div>}
-        {signupNotice && <div className="auth-error" style={{ color: 'var(--felt)' }}>{signupNotice}</div>}
+        {signupNotice && <div className="auth-error" style={{ color: 'var(--win)' }}>{signupNotice}</div>}
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="auth-email">Email</label>

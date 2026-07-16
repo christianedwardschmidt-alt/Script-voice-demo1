@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'The Table',
-  description: 'Pull up a chair — find your next board game night.',
+  title: 'The Huddle',
+  description: 'Where sports fans connect, talk trash, and share hot takes.',
 };
 
 export default function RootLayout({

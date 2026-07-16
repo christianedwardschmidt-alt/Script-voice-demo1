@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from './ToastProvider';
+import { TEAMS, LEAGUE_EMOJI } from '@/lib/teams';
 import type { Profile } from '@/lib/types';
+
+const AVATAR_OPTIONS = ['🏆', '🏈', '🏀', '⚾', '🏒', '⚽', '🔥', '🐐', '📣', '🎙️'];
 
 export function ProfilePanel({
   profile,
@@ -16,15 +19,22 @@ export function ProfilePanel({
 }) {
   const toast = useToast();
   const [name, setName] = useState(profile.display_name);
-  const [city, setCity] = useState(profile.city);
+  const [favoriteTeam, setFavoriteTeam] = useState(profile.favorite_team);
   const [bio, setBio] = useState(profile.bio);
+  const [avatarEmoji, setAvatarEmoji] = useState(profile.avatar_emoji);
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
     const { data, error } = await supabase
       .from('profiles')
-      .update({ display_name: name.trim(), city: city.trim(), bio: bio.trim(), updated_at: new Date().toISOString() })
+      .update({
+        display_name: name.trim(),
+        favorite_team: favoriteTeam,
+        bio: bio.trim(),
+        avatar_emoji: avatarEmoji,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', profile.id)
       .select()
       .single();
@@ -41,21 +51,44 @@ export function ProfilePanel({
     <section className="panel active" id="panel-profile">
       <div className="form-card">
         <h2>Your profile</h2>
-        <div className="sub">This name shows up on tables you host or join.</div>
+        <div className="sub">This is how other fans see you in the feed, rooms, and Connect.</div>
+
+        <div className="field">
+          <label>Avatar</label>
+          <div className="avatar-picker">
+            {AVATAR_OPTIONS.map((e) => (
+              <button
+                type="button"
+                key={e}
+                className={`avatar-option${avatarEmoji === e ? ' active' : ''}`}
+                onClick={() => setAvatarEmoji(e)}
+                aria-label={`Use ${e} as your avatar`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="field">
           <label htmlFor="p-name">Display name</label>
           <input id="p-name" placeholder="e.g. Christian" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="field">
-          <label htmlFor="p-city">Home base</label>
-          <input id="p-city" placeholder="e.g. Woburn, MA" value={city} onChange={(e) => setCity(e.target.value)} />
+          <label htmlFor="p-team">Favorite team</label>
+          <select id="p-team" value={favoriteTeam} onChange={(e) => setFavoriteTeam(e.target.value)}>
+            <option value="">No favorite yet</option>
+            {TEAMS.map((t) => (
+              <option key={t.id} value={t.id}>{LEAGUE_EMOJI[t.league]} {t.name}</option>
+            ))}
+          </select>
         </div>
         <div className="field">
           <label htmlFor="p-bio">Bio</label>
           <textarea
             id="p-bio"
             rows={3}
-            placeholder="Favorite genres, playstyle, what you're looking for..."
+            placeholder="Diehard since... your hot take specialty... what leagues you follow..."
             value={bio}
             onChange={(e) => setBio(e.target.value)}
           />
@@ -71,7 +104,7 @@ export function ProfilePanel({
           </button>
         </div>
         <div className="profile-note">
-          Tables and seats you claim are visible to everyone using this board — it&apos;s a shared table, not a private list.
+          Takes you post and rooms you join are visible to every fan in The Huddle — it&apos;s a shared feed, not a private one.
         </div>
       </div>
     </section>

@@ -1,4 +1,4 @@
--- The Table — Supabase schema
+-- The Huddle — Supabase schema
 -- Run this once in your Supabase project's SQL editor before using the app.
 
 -- ============================================================
@@ -8,8 +8,9 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null default '',
-  city text not null default '',
+  favorite_team text not null default '',
   bio text not null default '',
+  avatar_emoji text not null default '🏈',
   updated_at timestamptz not null default now()
 );
 
@@ -34,7 +35,7 @@ security definer set search_path = public
 as $$
 begin
   insert into public.profiles (id, display_name)
-  values (new.id, coalesce(split_part(new.email, '@', 1), 'Player'))
+  values (new.id, coalesce(split_part(new.email, '@', 1), 'Fan'))
   on conflict (id) do nothing;
   return new;
 end;
@@ -46,139 +47,185 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- ============================================================
--- tables — a hosted game session ("table")
+-- posts — a "take" shared to the feed
 -- ============================================================
-create table if not exists public.tables (
+create table if not exists public.posts (
   id uuid primary key default gen_random_uuid(),
-  host_id uuid not null references public.profiles (id) on delete cascade,
-  game text not null,
-  session_date date not null,
-  session_time time not null,
-  location text not null,
-  max_players int not null check (max_players >= 2 and max_players <= 10),
-  experience text not null default 'Open to all',
-  notes text not null default '',
+  author_id uuid not null references public.profiles (id) on delete cascade,
+  team_tag text not null default '',
+  content text not null check (char_length(content) between 1 and 500),
   created_at timestamptz not null default now()
 );
 
-alter table public.tables enable row level security;
+alter table public.posts enable row level security;
 
-create policy "Tables are viewable by authenticated users"
-  on public.tables for select
+create policy "Posts are viewable by authenticated users"
+  on public.posts for select
   to authenticated
   using (true);
 
-create policy "Users can host (insert) their own tables"
-  on public.tables for insert
+create policy "Users can post their own takes"
+  on public.posts for insert
+  to authenticated
+  with check (auth.uid() = author_id);
+
+create policy "Users can delete their own posts"
+  on public.posts for delete
+  to authenticated
+  using (auth.uid() = author_id);
+
+-- ============================================================
+-- post_reactions — one reaction (emoji) per user per post
+-- ============================================================
+create table if not exists public.post_reactions (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.posts (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  emoji text not null,
+  created_at timestamptz not null default now(),
+  unique (post_id, user_id)
+);
+
+alter table public.post_reactions enable row level security;
+
+create policy "Reactions are viewable by authenticated users"
+  on public.post_reactions for select
+  to authenticated
+  using (true);
+
+create policy "Users can react as themselves"
+  on public.post_reactions for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can change their own reaction"
+  on public.post_reactions for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can remove their own reaction"
+  on public.post_reactions for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- ============================================================
+-- post_comments — replies on a take
+-- ============================================================
+create table if not exists public.post_comments (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.posts (id) on delete cascade,
+  author_id uuid not null references public.profiles (id) on delete cascade,
+  content text not null check (char_length(content) between 1 and 300),
+  created_at timestamptz not null default now()
+);
+
+alter table public.post_comments enable row level security;
+
+create policy "Comments are viewable by authenticated users"
+  on public.post_comments for select
+  to authenticated
+  using (true);
+
+create policy "Users can comment as themselves"
+  on public.post_comments for insert
+  to authenticated
+  with check (auth.uid() = author_id);
+
+create policy "Users can delete their own comments"
+  on public.post_comments for delete
+  to authenticated
+  using (auth.uid() = author_id);
+
+-- ============================================================
+-- follows — fans connecting with other fans
+-- ============================================================
+create table if not exists public.follows (
+  id uuid primary key default gen_random_uuid(),
+  follower_id uuid not null references public.profiles (id) on delete cascade,
+  followed_id uuid not null references public.profiles (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (follower_id, followed_id),
+  check (follower_id <> followed_id)
+);
+
+alter table public.follows enable row level security;
+
+create policy "Follows are viewable by authenticated users"
+  on public.follows for select
+  to authenticated
+  using (true);
+
+create policy "Users can follow as themselves"
+  on public.follows for insert
+  to authenticated
+  with check (auth.uid() = follower_id);
+
+create policy "Users can unfollow as themselves"
+  on public.follows for delete
+  to authenticated
+  using (auth.uid() = follower_id);
+
+-- ============================================================
+-- game_rooms — a live discussion room for a specific matchup
+-- ============================================================
+create table if not exists public.game_rooms (
+  id uuid primary key default gen_random_uuid(),
+  host_id uuid not null references public.profiles (id) on delete cascade,
+  title text not null,
+  team_home text not null,
+  team_away text not null,
+  kickoff_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.game_rooms enable row level security;
+
+create policy "Rooms are viewable by authenticated users"
+  on public.game_rooms for select
+  to authenticated
+  using (true);
+
+create policy "Users can open their own rooms"
+  on public.game_rooms for insert
   to authenticated
   with check (auth.uid() = host_id);
 
-create policy "Hosts can update their own tables"
-  on public.tables for update
-  to authenticated
-  using (auth.uid() = host_id)
-  with check (auth.uid() = host_id);
-
-create policy "Hosts can delete their own tables"
-  on public.tables for delete
+create policy "Hosts can close their own rooms"
+  on public.game_rooms for delete
   to authenticated
   using (auth.uid() = host_id);
 
 -- ============================================================
--- table_players — seats claimed at a table
+-- game_room_messages — live chat within a game room
 -- ============================================================
-create table if not exists public.table_players (
+create table if not exists public.game_room_messages (
   id uuid primary key default gen_random_uuid(),
-  table_id uuid not null references public.tables (id) on delete cascade,
+  room_id uuid not null references public.game_rooms (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
-  joined_at timestamptz not null default now(),
-  unique (table_id, user_id)
+  content text not null check (char_length(content) between 1 and 300),
+  created_at timestamptz not null default now()
 );
 
-alter table public.table_players enable row level security;
+alter table public.game_room_messages enable row level security;
 
-create policy "Seats are viewable by authenticated users"
-  on public.table_players for select
+create policy "Room messages are viewable by authenticated users"
+  on public.game_room_messages for select
   to authenticated
   using (true);
 
--- Direct inserts are blocked; seat-claiming must go through join_table()
--- below so seat limits are enforced atomically. No insert policy is
--- granted here, so only the security-definer function can write rows.
-
-create policy "Users can leave a table they joined"
-  on public.table_players for delete
-  to authenticated
-  using (auth.uid() = user_id);
-
--- Atomically claim a seat, respecting max_players even under concurrent
--- requests from different users (locks the table row for the duration
--- of the check-and-insert).
-create or replace function public.join_table(p_table_id uuid)
-returns void
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-  v_max int;
-  v_count int;
-begin
-  select max_players into v_max
-  from public.tables
-  where id = p_table_id
-  for update;
-
-  if v_max is null then
-    raise exception 'Table not found';
-  end if;
-
-  select count(*) into v_count
-  from public.table_players
-  where table_id = p_table_id;
-
-  if v_count >= v_max then
-    raise exception 'Table is full';
-  end if;
-
-  insert into public.table_players (table_id, user_id)
-  values (p_table_id, auth.uid())
-  on conflict (table_id, user_id) do nothing;
-end;
-$$;
-
-grant execute on function public.join_table(uuid) to authenticated;
-
--- ============================================================
--- library_games — a user's personal "My Games" shelf
--- ============================================================
-create table if not exists public.library_games (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  game_name text not null,
-  created_at timestamptz not null default now(),
-  unique (user_id, game_name)
-);
-
-alter table public.library_games enable row level security;
-
-create policy "Users can view their own library"
-  on public.library_games for select
-  to authenticated
-  using (auth.uid() = user_id);
-
-create policy "Users can add to their own library"
-  on public.library_games for insert
+create policy "Users can chat as themselves"
+  on public.game_room_messages for insert
   to authenticated
   with check (auth.uid() = user_id);
 
-create policy "Users can remove from their own library"
-  on public.library_games for delete
-  to authenticated
-  using (auth.uid() = user_id);
-
 -- ============================================================
--- Realtime — broadcast changes so seat-claiming updates live
--- across everyone viewing the Discover tab.
+-- Realtime — broadcast changes so the feed, reactions, and game
+-- room chat update live for everyone watching.
 -- ============================================================
-alter publication supabase_realtime add table public.tables;
-alter publication supabase_realtime add table public.table_players;
+alter publication supabase_realtime add table public.posts;
+alter publication supabase_realtime add table public.post_reactions;
+alter publication supabase_realtime add table public.post_comments;
+alter publication supabase_realtime add table public.follows;
+alter publication supabase_realtime add table public.game_rooms;
+alter publication supabase_realtime add table public.game_room_messages;
