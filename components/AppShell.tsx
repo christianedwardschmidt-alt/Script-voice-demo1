@@ -2,17 +2,15 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { BrandMark } from './BrandMark';
-import { FeedPanel } from './FeedPanel';
-import { RoomsPanel } from './RoomsPanel';
-import { ConnectPanel } from './ConnectPanel';
+import { HomeFeed } from './HomeFeed';
+import { FindPlayers } from './FindPlayers';
+import { CoachesScreen } from './CoachesScreen';
 import { ProfilePanel } from './ProfilePanel';
+import { TabBar, type Tab } from './TabBar';
 import type { Profile } from '@/lib/types';
 
-type Tab = 'feed' | 'rooms' | 'connect' | 'profile';
-
 export function AppShell({ userId, initialProfile }: { userId: string; initialProfile: Profile }) {
-  const [tab, setTab] = useState<Tab>('feed');
+  const [tab, setTab] = useState<Tab>('home');
   const [profile, setProfile] = useState(initialProfile);
 
   async function handleSignOut() {
@@ -20,29 +18,16 @@ export function AppShell({ userId, initialProfile }: { userId: string; initialPr
   }
 
   return (
-    <div className="wrap">
-      <header>
-        <div className="brand">
-          <BrandMark />
-          <div className="brand-text">
-            <h1>The Huddle</h1>
-            <p>WHERE FANS TALK SPORTS</p>
-          </div>
-        </div>
-        <nav>
-          <button className={tab === 'feed' ? 'active' : ''} onClick={() => setTab('feed')}>Feed</button>
-          <button className={tab === 'rooms' ? 'active' : ''} onClick={() => setTab('rooms')}>Game Rooms</button>
-          <button className={tab === 'connect' ? 'active' : ''} onClick={() => setTab('connect')}>Connect</button>
-          <button className={tab === 'profile' ? 'active' : ''} onClick={() => setTab('profile')}>Profile</button>
-        </nav>
-      </header>
-
-      {tab === 'feed' && <FeedPanel currentUserId={userId} currentProfile={profile} />}
-      {tab === 'rooms' && <RoomsPanel currentUserId={userId} currentProfile={profile} />}
-      {tab === 'connect' && <ConnectPanel currentUserId={userId} />}
-      {tab === 'profile' && (
-        <ProfilePanel profile={profile} onSignOut={handleSignOut} onUpdated={setProfile} />
-      )}
+    <div className="app-frame">
+      <div className="screen-body">
+        {tab === 'home' && <HomeFeed profile={profile} onNavigate={setTab} />}
+        {tab === 'players' && <FindPlayers profile={profile} />}
+        {tab === 'coaches' && <CoachesScreen profile={profile} />}
+        {tab === 'profile' && (
+          <ProfilePanel profile={profile} onSignOut={handleSignOut} onUpdated={setProfile} />
+        )}
+      </div>
+      <TabBar active={tab} onChange={setTab} />
     </div>
   );
 }
