@@ -1,18 +1,15 @@
 export function BrandMark() {
   return (
     <div className="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 2c6 8 10 14 10 21a10 10 0 0 1-20 0c0-3 1-5.5 3-8 .5 3 2 4.5 3.5 5.5-1-3-1-7 1-10.5 1 2 2.5 3.5 4 4.5-1-4.5-2.5-8-1.5-12.5z" />
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="9.5" fill="#fff" fillOpacity="0.14" stroke="#fff" strokeWidth="1.6" />
+        <path
+          d="M12 2.5c-2.6 2.2-4 5.7-4 9.5s1.4 7.3 4 9.5M12 2.5c2.6 2.2 4 5.7 4 9.5s-1.4 7.3-4 9.5"
+          stroke="#fff"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
       </svg>
     </div>
-  );
-}
-
-export function ReactionBadge({ emoji, count, active }: { emoji: string; count: number; active: boolean }) {
-  return (
-    <span className={`reaction-badge${active ? ' active' : ''}`}>
-      <span aria-hidden="true">{emoji}</span>
-      {count > 0 && <span className="reaction-count">{count}</span>}
-    </span>
   );
 }

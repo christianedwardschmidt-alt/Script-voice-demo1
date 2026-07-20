@@ -37,18 +37,18 @@ export function AuthForm() {
 
   return (
     <div className="auth-wrap">
-      <div className="form-card auth-card">
-        <div className="brand" style={{ marginBottom: 20 }}>
+      <div className="auth-card">
+        <div className="auth-brand">
           <BrandMark />
-          <div className="brand-text">
-            <h2 style={{ fontFamily: "'Anton', sans-serif", fontSize: 26, margin: 0, textTransform: 'uppercase' }}>The Huddle</h2>
-          </div>
+          <h1>Fresh Court</h1>
         </div>
-        <div className="sub">
-          {mode === 'login' ? 'Sign in and get back in the huddle.' : 'Create an account to start talking sports.'}
+        <div className="auth-sub">
+          {mode === 'login'
+            ? 'Sign in to find players, book courts, and connect with coaches.'
+            : 'Create an account to find nearby players and book coaches.'}
         </div>
         {error && <div className="auth-error">{error}</div>}
-        {signupNotice && <div className="auth-error" style={{ color: 'var(--win)' }}>{signupNotice}</div>}
+        {signupNotice && <div className="auth-notice">{signupNotice}</div>}
         <form onSubmit={handleSubmit}>
           <div className="field">
             <label htmlFor="auth-email">Email</label>
@@ -73,11 +73,9 @@ export function AuthForm() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <div className="submitrow">
-            <button type="submit" className="big" disabled={loading}>
-              {loading ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Sign up'}
-            </button>
-          </div>
+          <button type="submit" className="auth-submit" disabled={loading}>
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Sign up'}
+          </button>
         </form>
         <div className="auth-toggle">
           {mode === 'login' ? (

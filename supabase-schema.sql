@@ -1,4 +1,4 @@
--- The Huddle — Supabase schema
+-- Fresh Court — Supabase schema
 -- Run this once in your Supabase project's SQL editor before using the app.
 
 -- ============================================================
@@ -8,9 +8,10 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text not null default '',
-  favorite_team text not null default '',
+  skill_level numeric(3,1) not null default 3.0 check (skill_level between 1.0 and 7.0),
+  home_court text not null default '',
+  note text not null default '',
   bio text not null default '',
-  avatar_emoji text not null default '🏈',
   updated_at timestamptz not null default now()
 );
 
@@ -35,7 +36,7 @@ security definer set search_path = public
 as $$
 begin
   insert into public.profiles (id, display_name)
-  values (new.id, coalesce(split_part(new.email, '@', 1), 'Fan'))
+  values (new.id, coalesce(split_part(new.email, '@', 1), 'Player'))
   on conflict (id) do nothing;
   return new;
 end;
@@ -47,185 +48,106 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- ============================================================
--- posts — a "take" shared to the feed
+-- invites — a play invite sent from one player to another,
+-- proposing a court and a date/time.
 -- ============================================================
-create table if not exists public.posts (
+create table if not exists public.invites (
   id uuid primary key default gen_random_uuid(),
-  author_id uuid not null references public.profiles (id) on delete cascade,
-  team_tag text not null default '',
-  content text not null check (char_length(content) between 1 and 500),
+  sender_id uuid not null references public.profiles (id) on delete cascade,
+  recipient_id uuid not null references public.profiles (id) on delete cascade,
+  court text not null default '',
+  scheduled_at timestamptz not null,
+  message text not null default '',
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined')),
+  created_at timestamptz not null default now(),
+  check (sender_id <> recipient_id)
+);
+
+alter table public.invites enable row level security;
+
+create policy "Invites are viewable by sender and recipient"
+  on public.invites for select
+  to authenticated
+  using (auth.uid() = sender_id or auth.uid() = recipient_id);
+
+create policy "Users can send invites as themselves"
+  on public.invites for insert
+  to authenticated
+  with check (auth.uid() = sender_id);
+
+create policy "Recipients can accept or decline invites"
+  on public.invites for update
+  to authenticated
+  using (auth.uid() = recipient_id)
+  with check (auth.uid() = recipient_id);
+
+create policy "Senders can cancel invites they sent"
+  on public.invites for delete
+  to authenticated
+  using (auth.uid() = sender_id);
+
+-- ============================================================
+-- coaches — curated coach directory (read-only for players)
+-- ============================================================
+create table if not exists public.coaches (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  specialty text not null default '',
+  rating numeric(2,1) not null default 5.0,
+  price_per_hour numeric not null default 50,
+  is_featured boolean not null default false,
+  beginner_friendly boolean not null default true,
   created_at timestamptz not null default now()
 );
 
-alter table public.posts enable row level security;
+alter table public.coaches enable row level security;
 
-create policy "Posts are viewable by authenticated users"
-  on public.posts for select
+create policy "Coaches are viewable by authenticated users"
+  on public.coaches for select
   to authenticated
   using (true);
 
-create policy "Users can post their own takes"
-  on public.posts for insert
-  to authenticated
-  with check (auth.uid() = author_id);
-
-create policy "Users can delete their own posts"
-  on public.posts for delete
-  to authenticated
-  using (auth.uid() = author_id);
+insert into public.coaches (name, specialty, rating, price_per_hour, is_featured, beginner_friendly)
+select * from (values
+  ('Elena Torres', 'Beginner specialist', 4.9, 45, true, true),
+  ('Marcus Webb', 'Serve & technique', 4.8, 60, false, true),
+  ('Grace Lin', 'Match strategy', 4.7, 55, false, false)
+) as seed(name, specialty, rating, price_per_hour, is_featured, beginner_friendly)
+where not exists (select 1 from public.coaches);
 
 -- ============================================================
--- post_reactions — one reaction (emoji) per user per post
+-- coach_bookings — a player's request to book a coaching session
 -- ============================================================
-create table if not exists public.post_reactions (
+create table if not exists public.coach_bookings (
   id uuid primary key default gen_random_uuid(),
-  post_id uuid not null references public.posts (id) on delete cascade,
   user_id uuid not null references public.profiles (id) on delete cascade,
-  emoji text not null,
-  created_at timestamptz not null default now(),
-  unique (post_id, user_id)
+  coach_id uuid not null references public.coaches (id) on delete cascade,
+  scheduled_at timestamptz not null,
+  status text not null default 'requested' check (status in ('requested', 'confirmed', 'cancelled')),
+  created_at timestamptz not null default now()
 );
 
-alter table public.post_reactions enable row level security;
+alter table public.coach_bookings enable row level security;
 
-create policy "Reactions are viewable by authenticated users"
-  on public.post_reactions for select
+create policy "Users can view their own bookings"
+  on public.coach_bookings for select
   to authenticated
-  using (true);
+  using (auth.uid() = user_id);
 
-create policy "Users can react as themselves"
-  on public.post_reactions for insert
+create policy "Users can request bookings as themselves"
+  on public.coach_bookings for insert
   to authenticated
   with check (auth.uid() = user_id);
 
-create policy "Users can change their own reaction"
-  on public.post_reactions for update
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-create policy "Users can remove their own reaction"
-  on public.post_reactions for delete
+create policy "Users can cancel their own bookings"
+  on public.coach_bookings for delete
   to authenticated
   using (auth.uid() = user_id);
 
 -- ============================================================
--- post_comments — replies on a take
+-- Realtime — broadcast changes so invites and bookings update
+-- live for everyone watching.
 -- ============================================================
-create table if not exists public.post_comments (
-  id uuid primary key default gen_random_uuid(),
-  post_id uuid not null references public.posts (id) on delete cascade,
-  author_id uuid not null references public.profiles (id) on delete cascade,
-  content text not null check (char_length(content) between 1 and 300),
-  created_at timestamptz not null default now()
-);
-
-alter table public.post_comments enable row level security;
-
-create policy "Comments are viewable by authenticated users"
-  on public.post_comments for select
-  to authenticated
-  using (true);
-
-create policy "Users can comment as themselves"
-  on public.post_comments for insert
-  to authenticated
-  with check (auth.uid() = author_id);
-
-create policy "Users can delete their own comments"
-  on public.post_comments for delete
-  to authenticated
-  using (auth.uid() = author_id);
-
--- ============================================================
--- follows — fans connecting with other fans
--- ============================================================
-create table if not exists public.follows (
-  id uuid primary key default gen_random_uuid(),
-  follower_id uuid not null references public.profiles (id) on delete cascade,
-  followed_id uuid not null references public.profiles (id) on delete cascade,
-  created_at timestamptz not null default now(),
-  unique (follower_id, followed_id),
-  check (follower_id <> followed_id)
-);
-
-alter table public.follows enable row level security;
-
-create policy "Follows are viewable by authenticated users"
-  on public.follows for select
-  to authenticated
-  using (true);
-
-create policy "Users can follow as themselves"
-  on public.follows for insert
-  to authenticated
-  with check (auth.uid() = follower_id);
-
-create policy "Users can unfollow as themselves"
-  on public.follows for delete
-  to authenticated
-  using (auth.uid() = follower_id);
-
--- ============================================================
--- game_rooms — a live discussion room for a specific matchup
--- ============================================================
-create table if not exists public.game_rooms (
-  id uuid primary key default gen_random_uuid(),
-  host_id uuid not null references public.profiles (id) on delete cascade,
-  title text not null,
-  team_home text not null,
-  team_away text not null,
-  kickoff_at timestamptz not null,
-  created_at timestamptz not null default now()
-);
-
-alter table public.game_rooms enable row level security;
-
-create policy "Rooms are viewable by authenticated users"
-  on public.game_rooms for select
-  to authenticated
-  using (true);
-
-create policy "Users can open their own rooms"
-  on public.game_rooms for insert
-  to authenticated
-  with check (auth.uid() = host_id);
-
-create policy "Hosts can close their own rooms"
-  on public.game_rooms for delete
-  to authenticated
-  using (auth.uid() = host_id);
-
--- ============================================================
--- game_room_messages — live chat within a game room
--- ============================================================
-create table if not exists public.game_room_messages (
-  id uuid primary key default gen_random_uuid(),
-  room_id uuid not null references public.game_rooms (id) on delete cascade,
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  content text not null check (char_length(content) between 1 and 300),
-  created_at timestamptz not null default now()
-);
-
-alter table public.game_room_messages enable row level security;
-
-create policy "Room messages are viewable by authenticated users"
-  on public.game_room_messages for select
-  to authenticated
-  using (true);
-
-create policy "Users can chat as themselves"
-  on public.game_room_messages for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
--- ============================================================
--- Realtime — broadcast changes so the feed, reactions, and game
--- room chat update live for everyone watching.
--- ============================================================
-alter publication supabase_realtime add table public.posts;
-alter publication supabase_realtime add table public.post_reactions;
-alter publication supabase_realtime add table public.post_comments;
-alter publication supabase_realtime add table public.follows;
-alter publication supabase_realtime add table public.game_rooms;
-alter publication supabase_realtime add table public.game_room_messages;
+alter publication supabase_realtime add table public.profiles;
+alter publication supabase_realtime add table public.invites;
+alter publication supabase_realtime add table public.coach_bookings;
