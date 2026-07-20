@@ -1,5 +1,5 @@
 {
-  "name": "the-huddle",
+  "name": "trainer-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,6 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
     "next": "16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
