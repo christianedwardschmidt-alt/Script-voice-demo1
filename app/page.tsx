@@ -1,12 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 import { AuthForm } from '@/components/AuthForm';
 import { AppShell } from '@/components/AppShell';
 import { ToastProvider } from '@/components/ToastProvider';
 import type { Profile } from '@/lib/types';
 import type { Session } from '@supabase/supabase-js';
+
+function SetupNotice() {
+  return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-brand">
+          <h1>Fresh Court</h1>
+        </div>
+        <div className="auth-sub">
+          This app isn&apos;t connected to a Supabase project yet. Set{' '}
+          <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>{' '}
+          in your environment (see <code>.env.local.example</code>) and redeploy.
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [session, setSession] = useState<Session | null>(null);
@@ -14,6 +31,7 @@ export default function Home() {
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) return;
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setCheckingSession(false);
@@ -40,6 +58,10 @@ export default function Home() {
       cancelled = true;
     };
   }, [session]);
+
+  if (!isSupabaseConfigured) {
+    return <SetupNotice />;
+  }
 
   if (checkingSession) {
     return <div className="auth-wrap" />;
