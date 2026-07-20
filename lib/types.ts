@@ -1,63 +1,66 @@
-export interface Profile {
+export type SessionType = 'video' | 'in-person';
+export type SessionStatus = 'confirmed' | 'pending' | 'completed';
+
+export interface Goal {
   id: string;
-  display_name: string;
-  favorite_team: string;
-  bio: string;
-  avatar_emoji: string;
-  updated_at: string;
+  text: string;
+  met: boolean;
 }
 
-export interface Post {
+export interface Client {
   id: string;
-  author_id: string;
-  team_tag: string;
-  content: string;
-  created_at: string;
+  name: string;
+  initials: string;
+  accent: string;
+  weeksInProgram: number;
+  weightChangeLb: number;
+  sessionsCompleted: number;
+  weekStreak: number;
+  weightLog: number[];
+  goals: Goal[];
 }
 
-export interface PostReaction {
+export interface SessionItem {
   id: string;
-  post_id: string;
-  user_id: string;
-  emoji: string;
-  created_at: string;
+  clientId: string;
+  dayIndex: number; // 0=Mon .. 4=Fri
+  timeMinutes: number; // minutes since midnight, for sorting/display
+  type: SessionType;
+  label: string;
+  status: SessionStatus;
 }
 
-export interface PostComment {
+export interface ChatMessage {
   id: string;
-  post_id: string;
-  author_id: string;
-  content: string;
-  created_at: string;
+  clientId: string;
+  from: 'trainer' | 'client';
+  text: string;
+  timeLabel: string;
 }
 
-export interface Follow {
-  id: string;
-  follower_id: string;
-  followed_id: string;
-  created_at: string;
+export interface Conversation {
+  clientId: string;
+  timeLabel: string;
+  preview: string;
+  unread: boolean;
 }
 
-export interface GameRoom {
-  id: string;
-  host_id: string;
-  title: string;
-  team_home: string;
-  team_away: string;
-  kickoff_at: string;
-  created_at: string;
+export interface Trainer {
+  name: string;
+  fullName: string;
+  initials: string;
+  email: string;
+  activeClients: number;
+  newMatches: number;
+  retention: number;
 }
 
-export interface GameRoomMessage {
-  id: string;
-  room_id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-}
-
-export interface PostWithDetails extends Post {
-  author: Profile | null;
-  reactions: PostReaction[];
-  comments: (PostComment & { author: Profile | null })[];
+export interface CallState {
+  sessionId: string;
+  clientId: string;
+  muted: boolean;
+  cameraOn: boolean;
+  elapsedSec: number;
+  setLabel: string;
+  exerciseLabel: string;
 }
