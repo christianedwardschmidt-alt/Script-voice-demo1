@@ -25,7 +25,7 @@ export function NavBar({ active, onNavigate, focusHours }: NavBarProps) {
             <button key={item.key} onClick={() => onNavigate(item.key)} aria-label={item.label}>
               <div
                 className="nav-dot"
-                style={{ background: item.key === active ? 'var(--accent)' : '#525252' }}
+                style={{ background: item.key === active ? 'var(--accent)' : 'var(--text-off)' }}
               />
             </button>
           ))}
@@ -43,7 +43,7 @@ export function NavBar({ active, onNavigate, focusHours }: NavBarProps) {
             >
               <div
                 className="nav-dot"
-                style={{ background: item.key === active ? 'var(--accent)' : '#525252' }}
+                style={{ background: item.key === active ? 'var(--accent)' : 'var(--text-off)' }}
               />
               {item.label}
             </button>

@@ -63,7 +63,7 @@ export function CalendarCard({
               onClick={() => onSelectDay(cell.day as number)}
               style={{
                 background: isSelected ? 'var(--accent)' : 'transparent',
-                color: isSelected ? '#181818' : isToday ? '#fafafa' : '#c4c4c4',
+                color: isSelected ? 'var(--bg)' : isToday ? 'var(--text)' : 'var(--text-dim)',
                 border: isToday && !isSelected ? '1px solid var(--accent)' : 'none',
               }}
             >

@@ -13,7 +13,7 @@ export function CompletionRing({ completedCount, totalCount }: CompletionRingPro
     <div className="card ring-card">
       <div className="ring-wrap">
         <svg width="74" height="74" viewBox="0 0 74 74" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx="37" cy="37" r={radius} fill="none" stroke="#2a2a2a" strokeWidth="7" />
+          <circle cx="37" cy="37" r={radius} fill="none" stroke="var(--border)" strokeWidth="7" />
           <circle
             cx="37" cy="37" r={radius} fill="none"
             stroke="var(--accent)" strokeWidth="7" strokeLinecap="round"
